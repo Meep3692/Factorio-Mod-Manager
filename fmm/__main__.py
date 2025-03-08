@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Set, Tuple, no_type_check, override
-from resolver import Package, PackageProvider, PackageVersion, Requirement, Version
+from fmm.resolver import Package, PackageProvider, PackageVersion, Requirement, Version
 import requests
 import argparse
 from pathlib import Path

@@ -1,0 +1,12 @@
+[project]
+name = "factorio-mod-manager"
+version = "0.1.0"
+description = "A command-line tool for managing Factorio mods with dependency resolution and version locking, intended especially for server admins."
+authors = [{ name = "Henrik Lievonen" }]
+readme = "README.md"
+dependencies = [
+    "requests",
+]
+
+[project.scripts]
+fmm = "fmm.__main__:main"
