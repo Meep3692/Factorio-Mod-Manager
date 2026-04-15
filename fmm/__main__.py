@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
+import os
 from typing import Any, Dict, Iterable, List, Set, Tuple, no_type_check, override
 from fmm.resolver import Package, PackageProvider, PackageVersion, Requirement, Version
 import requests
@@ -170,12 +171,19 @@ def update_command(args):
 
 
 def download_mod_to_target(mod: LockEntry, url: str, target: Path):
+    dest = target / mod.file_name
+    if os.path.isfile(dest):
+        if sha1(open(dest, 'rb').read()).hexdigest() == mod.sha1:
+            print("\tAlready downloaded")
+            return
+        else:
+            print("\tBad hash, retrying")
     r = requests.get(url)
     assert r.status_code == 200
     assert r.headers['content-type'] == 'application/octet-stream'
     data = r.content
     assert sha1(data).hexdigest() == mod.sha1
-    open(target / mod.file_name, 'wb').write(data)
+    open(dest, 'wb').write(data)
 
 
 def nix_prefetch_mod(mod: LockEntry, url: str):
@@ -221,13 +229,27 @@ def install_command(args):
         print('Lock file malformed. Bailing. Please fix it or delete it.')
         exit(1)
 
-    for mod in lock:
-        print(f'Downloading {mod.name} {mod.version}')
-        url = f'{MOD_PORTAL_URL}{mod.download_url}?username={quote(args.username)}&token={quote(args.token)}'
-        if args.nix_prefetch:
-            nix_prefetch_mod(mod, url)
-        else:
-            download_mod_to_target(mod, url, args.target)
+    i = 0
+    retries: List[LockEntry] = []
+    todl = lock
+    for _ in range(args.retries):
+        for mod in todl:
+            print(f'Downloading {mod.name} {mod.version}')
+            url = f'{MOD_PORTAL_URL}{mod.download_url}?username={quote(args.username)}&token={quote(args.token)}'
+            try:
+                if args.nix_prefetch:
+                    nix_prefetch_mod(mod, url)
+                else:
+                    download_mod_to_target(mod, url, args.target)
+            except:
+                print("\tDownload failed, trying later")
+                retries.append(mod)
+        todl = retries
+        retries = []
+    if len(todl) > 0:
+        print("Some mods could not be downloaded:")
+        for mod in todl:
+            print(f"\t{mod.name} {mod.version}")
 
     if not args.nix_prefetch:
         # Write a mod list so that the game knows which mods to enable
@@ -290,6 +312,11 @@ def main():
         help=
         'instead of installing the mods to target directory, prefetch them using nix-prefetch-url'
     )
+    install_parser.add_argument(
+        '--retries',
+        type=int,
+        help='number of times to retry failed downloads',
+        default=3)
     install_parser.set_defaults(func=install_command)
 
     args = parser.parse_args()
