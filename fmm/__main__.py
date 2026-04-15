@@ -175,18 +175,17 @@ def download_mod_to_target(mod: LockEntry, url: str, target: Path):
     dest = target / mod.file_name
     if os.path.isfile(dest):
         if sha1(open(dest, 'rb').read()).hexdigest() == mod.sha1:
-            print("\tAlready downloaded")
+            print('\tAlready downloaded')
             return
         else:
-            print("\tBad hash, retrying")
+            print('\tBad hash, retrying')
     r = requests.get(url)
     r.raise_for_status()
-    #assert r.status_code == 200
     if not r.headers['content-type'] in ACCEPTABLE_CONTENT_TYPES:
-        raise Exception(f"Wrong content-type: {r.headers['content-type']}")
+        raise Exception(f'Wrong content-type: {r.headers['content-type']}')
     data = r.content
     if sha1(data).hexdigest() != mod.sha1:
-        raise Exception("Bad hash")
+        raise Exception('Bad hash')
     open(dest, 'wb').write(data)
 
 
@@ -246,14 +245,14 @@ def install_command(args):
                 else:
                     download_mod_to_target(mod, url, args.target)
             except Exception as e:
-                print(f"\tDownload failed: {str(e)}, trying later")
+                print(f'\tDownload failed: {str(e)}, trying later')
                 retries.append(mod)
         todl = retries
         retries = []
     if len(todl) > 0:
-        print("Some mods could not be downloaded:")
+        print('Some mods could not be downloaded:')
         for mod in todl:
-            print(f"\t{mod.name} {mod.version}")
+            print(f'\t{mod.name} {mod.version}')
 
     if not args.nix_prefetch:
         # Write a mod list so that the game knows which mods to enable
