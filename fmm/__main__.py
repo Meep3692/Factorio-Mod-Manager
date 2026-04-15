@@ -169,6 +169,7 @@ def update_command(args):
     lock = update(load_mod_list(args.mods), args.factorio_version)
     store_lock_file(args.lock, lock)
 
+ACCEPTABLE_CONTENT_TYPES = ['application/octet-stream', 'binary/octet-stream']
 
 def download_mod_to_target(mod: LockEntry, url: str, target: Path):
     dest = target / mod.file_name
@@ -179,10 +180,13 @@ def download_mod_to_target(mod: LockEntry, url: str, target: Path):
         else:
             print("\tBad hash, retrying")
     r = requests.get(url)
-    assert r.status_code == 200
-    assert r.headers['content-type'] == 'application/octet-stream'
+    r.raise_for_status()
+    #assert r.status_code == 200
+    if not r.headers['content-type'] in ACCEPTABLE_CONTENT_TYPES:
+        raise Exception(f"Wrong content-type: {r.headers['content-type']}")
     data = r.content
-    assert sha1(data).hexdigest() == mod.sha1
+    if sha1(data).hexdigest() != mod.sha1:
+        raise Exception("Bad hash")
     open(dest, 'wb').write(data)
 
 
@@ -241,8 +245,8 @@ def install_command(args):
                     nix_prefetch_mod(mod, url)
                 else:
                     download_mod_to_target(mod, url, args.target)
-            except:
-                print("\tDownload failed, trying later")
+            except Exception as e:
+                print(f"\tDownload failed: {str(e)}, trying later")
                 retries.append(mod)
         todl = retries
         retries = []
